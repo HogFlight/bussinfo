@@ -6,7 +6,7 @@
 <footer>Data från <a href="https://www.trafiklab.se/">Trafiklab.se</a>. Realtidsstatus är inte detsamma som bekräftad GPS-position. Byte kräver minst fem minuter.</footer>
 <script>
 // Ange bara den offentliga URL:en till din Cloudflare Worker här. Aldrig API-nyckeln.
-const API_URL='https://DIN-WORKER.DITT-NAMN.workers.dev/api';
+const API_URL='/api';
 const stockholmHour=Number(new Intl.DateTimeFormat('en-GB',{timeZone:'Europe/Stockholm',hour:'2-digit',hourCycle:'h23'}).format(new Date()));
 let mode=stockholmHour>=12?'home':'work';
 const $=id=>document.getElementById(id);
