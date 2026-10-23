@@ -1,24 +1,75 @@
-<!doctype html><html lang="sv"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="theme-color" content="#172b42"><title>Min pendling</title>
-<style>:root{font-family:system-ui,-apple-system,'Segoe UI',sans-serif;color:#172b42;background:#f2f5f8}*{box-sizing:border-box}body{max-width:580px;margin:0 auto;padding:16px}header{display:flex;justify-content:space-between;align-items:center}h1{font-size:26px;margin:12px 0 0}p{margin:6px 0;color:#64748b}.tabs{display:flex;gap:6px;background:#e2e8f0;padding:5px;border-radius:13px;margin:20px 0}.tabs button{flex:1;border:0;background:transparent;border-radius:9px;padding:13px;font-weight:650;color:#334155}.tabs button.active{background:#fff;box-shadow:0 1px 4px #0002}button{font:inherit;cursor:pointer}#refresh{width:100%;background:#172b42;color:#fff;border:0;border-radius:11px;padding:14px;margin:16px 0;font-weight:650}#refresh:disabled{opacity:.55}.card{background:#fff;border-radius:14px;padding:15px;margin:10px 0;box-shadow:0 1px 5px #0000000d}.headline{display:flex;justify-content:space-between;align-items:center;gap:10px;font-weight:700}.clock{font-size:26px;font-variant-numeric:tabular-nums}.label{background:#e8eef7;border-radius:8px;padding:5px 8px;font-size:13px}.details{font-size:14px;color:#64748b;line-height:1.7}.warn{color:#b45309;font-weight:700}.error{background:#fee2e2;padding:14px;border-radius:12px}.muted{color:#64748b}.rt{color:#047857}.nr{color:#64748b}footer{font-size:12px;color:#64748b;margin-top:30px}</style></head><body>
-<header><div><h1>Min pendling</h1><p>Vikingstad ↔ Forskningsbyn / Nobeltorget</p></div><span aria-hidden="true" style="font-size:30px">🚉</span></header>
-<div class="tabs"><button id="work">Till jobbet</button><button id="home">Hem</button></div>
-<p id="status">Ingen sökning genomförd.</p><main id="results" aria-live="polite"></main><button id="refresh">↻ Uppdatera</button>
-<footer>Data från <a href="https://www.trafiklab.se/">Trafiklab.se</a>. Realtidsstatus är inte detsamma som bekräftad GPS-position. Byte kräver minst fem minuter.</footer>
+<!doctype html>
+<html lang="sv">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#0f2740">
+<title>Bussinfo</title>
+<style>
+:root{font-family:system-ui,-apple-system,"Segoe UI",sans-serif;color:#162738;background:#f3f5f7;font-synthesis:none}
+*{box-sizing:border-box}body{max-width:590px;margin:auto;padding:12px 12px 35px}button{font:inherit;cursor:pointer}
+.mode{width:100%;border:0;text-align:left;border-radius:13px;background:#123655;color:#fff;padding:18px 17px;display:flex;align-items:center;justify-content:space-between;gap:12px}
+.mode.home{background:#4a315f}.eyebrow{font-size:12px;letter-spacing:.09em;font-weight:700;opacity:.8;text-transform:uppercase}.mode-title{font-size:28px;line-height:1.15;font-weight:800;margin-top:3px}.mode .switch{font-size:13px;background:#ffffff26;border-radius:9px;padding:9px;white-space:nowrap}
+.toolbar{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:13px 3px 9px}.updated{font-size:12px;color:#667789}.refresh{border:1px solid #cbd5df;background:white;border-radius:9px;padding:8px 12px;font-weight:650}.refresh:disabled{opacity:.5}
+.head{display:grid;grid-template-columns:minmax(0,1fr) 69px 69px;gap:6px;color:#718095;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;padding:5px 12px}
+.trip{background:white;border:1px solid #e0e6eb;border-radius:10px;margin:6px 0;padding:11px 12px 9px}
+.trip-main{display:grid;grid-template-columns:minmax(0,1fr) 69px 69px;gap:6px;align-items:center}.route{font-weight:750;font-size:17px;white-space:nowrap}.time{text-align:right;font-size:20px;font-weight:750;font-variant-numeric:tabular-nums;letter-spacing:-.03em}
+.trip-meta{font-size:12px;color:#64748b;margin-top:4px;line-height:1.4}.late{color:#b43e26;font-weight:700}.ok{color:#197449}.unknown{color:#6b7280}.alert{background:#ffe8e4;color:#9e2f20;border-radius:5px;padding:2px 5px;font-weight:700}.msg{padding:20px 12px;color:#516173;background:white;border-radius:10px}.error{background:#ffe9e7;color:#8e281d}
+legend{display:none}@media(max-width:350px){.time{font-size:18px}.head,.trip-main{grid-template-columns:minmax(0,1fr) 62px 62px}.route{font-size:16px}}
+</style>
+</head>
+<body>
+<button type="button" class="mode" id="mode" aria-label="Växla mellan till jobbet och hem">
+ <span><span class="eyebrow">Bussinfo</span><span class="mode-title" id="mode-title" style="display:block">TILL JOBBET</span></span>
+ <span class="switch">⇄ Byt riktning</span>
+</button>
+<div class="toolbar"><span class="updated" id="status">Hämtar…</span><button type="button" class="refresh" id="refresh">↻ Uppdatera</button></div>
+<div class="head"><span>Resväg</span><span style="text-align:right">Avgång</span><span style="text-align:right">Framme</span></div>
+<main id="results" aria-live="polite"></main>
 <script>
-// Ange bara den offentliga URL:en till din Cloudflare Worker här. Aldrig API-nyckeln.
+'use strict';
 const API_URL='/api';
-const stockholmHour=Number(new Intl.DateTimeFormat('en-GB',{timeZone:'Europe/Stockholm',hour:'2-digit',hourCycle:'h23'}).format(new Date()));
-let mode=stockholmHour>=12?'home':'work';
+const hour=Number(new Intl.DateTimeFormat('en-GB',{timeZone:'Europe/Stockholm',hour:'2-digit',hourCycle:'h23'}).format(new Date()));
+let mode=hour>=12?'home':'work';
 const $=id=>document.getElementById(id);
-const fmt=s=>s?s.slice(11,16):'–';
-const escapeHTML=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-function render(){ $('work').classList.toggle('active',mode==='work');$('home').classList.toggle('active',mode==='home');refresh(); }
-function delay(d){if(d.canceled)return '<span class="warn">Inställd</span>';if(!d.is_realtime)return '<span class="nr">Ingen realtid</span>';const m=Math.round((d.delay||0)/60);return `<span class="${m>0?'warn':'rt'}">${m>0?'+'+m+' min':m<0?m+' min':'I tid'} · Realtid</span>`}
-async function refresh(){let btn=$('refresh');btn.disabled=true;$('status').textContent='Hämtar avgångar…';$('results').innerHTML='';try{
- const u=new URL(API_URL, window.location.origin);u.searchParams.set('mode',mode);const response=await fetch(u);const data=await response.json();if(!response.ok)throw new Error(data.error||'API-fel');
- $('status').textContent=`Uppdaterad ${new Intl.DateTimeFormat('sv-SE',{timeZone:'Europe/Stockholm',hour:'2-digit',minute:'2-digit',second:'2-digit'}).format(new Date(data.updated))} · kommande 60 min`;
- if(!data.journeys.length){$('results').innerHTML='<div class="card">Inga kompletta resor hittades. Det kan bero på avgångsfönstret eller att detaljdata saknas.</div>';return;}
- $('results').innerHTML=data.journeys.map(j=>`<article class="card"><div class="headline"><span class="clock">${fmt(j.start)}</span><span class="label">${j.kind==='575'?'Buss 575':'Tåg + buss 4'}</span><span class="clock">${fmt(j.end)}</span></div><p>${j.kind==='575'?'Vikingstad ↔ Forskningsbyn':'Vikingstad ↔ Nobeltorget'}</p><div class="details">${j.legs.map((l,i)=>`<div>${i+1}. ${escapeHTML(l.departure.designation)} ${fmt(l.depart)} → ${fmt(l.arrive)} · ${delay(l.departure)}${l.departure.platform?' · Läge '+escapeHTML(l.departure.platform):''}</div>`).join('')}${j.connectionMinutes!==undefined?`<div>Byte i Linköping: ${j.connectionMinutes} min</div>`:''}</div></article>`).join('');
- }catch(e){$('status').textContent='Kunde inte uppdatera';$('results').innerHTML=`<div class="error">${escapeHTML(e.message)}. Kontrollera Worker-adressen och att nyckeln är sparad som en hemlighet.</div>`;}finally{btn.disabled=false;}}
-$('work').onclick=()=>{mode='work';render()};$('home').onclick=()=>{mode='home';render()};$('refresh').onclick=refresh;render();
-</script></body></html>
+const time=s=>s?s.slice(11,16):'–';
+const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const minutes=s=>s?Math.round(Number(s)/60):0;
+function updateMode(){
+ const home=mode==='home';
+ $('mode-title').textContent=home?'HEM TILL VIKINGSTAD':'TILL JOBBET';
+ $('mode').classList.toggle('home',home);
+ document.title=(home?'Hem':'Till jobbet')+' · Bussinfo';
+}
+function legStatus(leg){
+ const d=leg.departure||{};
+ if(d.canceled)return '<span class="alert">Inställd</span>';
+ if(!d.is_realtime)return '';
+ const m=minutes(d.delay);
+ return m>0?`<span class="late">+${m} min</span>`:m<0?`<span class="ok">${m} min</span>`:'<span class="ok">I tid</span>';
+}
+function renderTrip(j){
+ const isBus=j.kind==='575';
+ const parts=(j.legs||[]).map((l,i)=>{
+   const name=isBus?'575':(l.departure?.designation||'');
+   return `<span>${esc(name)}: ${legStatus(l)||'<span class="unknown">tidtabell</span>'}</span>`;
+ });
+ const status=parts.join(' <span aria-hidden="true">·</span> ');
+ const transfer=!isBus&&Number.isFinite(j.connectionMinutes)?` <span>· Byte ${Math.round(j.connectionMinutes)} min</span>`:'';
+ return `<article class="trip"><div class="trip-main"><span class="route">${isBus?'575':'Tåg + 4'}</span><span class="time">${time(j.start)}</span><span class="time">${time(j.end)}</span></div><div class="trip-meta">${status}${transfer}</div></article>`;
+}
+async function refresh(){
+ const btn=$('refresh');btn.disabled=true;$('status').textContent='Uppdaterar…';
+ try{
+  const url=new URL(API_URL,location.origin);url.searchParams.set('mode',mode);
+  const response=await fetch(url,{cache:'no-store'});
+  const data=await response.json();if(!response.ok)throw new Error(data.error||'API-fel');
+  $('results').innerHTML=(data.journeys||[]).length?data.journeys.map(renderTrip).join(''):'<div class="msg">Inga resor hittades inom sökfönstret.</div>';
+  $('status').textContent='Uppdaterad '+new Intl.DateTimeFormat('sv-SE',{timeZone:'Europe/Stockholm',hour:'2-digit',minute:'2-digit'}).format(new Date(data.updated||Date.now()));
+ }catch(e){$('results').innerHTML=`<div class="msg error">Kunde inte hämta resor: ${esc(e.message)}</div>`;$('status').textContent='Uppdatering misslyckades';}
+ finally{btn.disabled=false;}
+}
+$('mode').addEventListener('click',()=>{mode=mode==='work'?'home':'work';updateMode();refresh()});
+$('refresh').addEventListener('click',refresh);updateMode();refresh();
+</script>
+</body></html>
